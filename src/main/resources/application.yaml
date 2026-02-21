@@ -1,3 +1,8 @@
 spring:
   application:
     name: proxmox-mcp-server
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        type: SYNC
