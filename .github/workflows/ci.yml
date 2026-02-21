@@ -59,10 +59,19 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Build for dependency analysis
+        run: mvn -B -DskipTests package
       - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@1.1.0
         env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-        run: mvn -B org.owasp:dependency-check-maven:check -Dformat=HTML,XML -DoutputDirectory=target/dependency-check -DnvdApiKey=${NVD_API_KEY}
+          JAVA_HOME: /opt/jdk
+        with:
+          project: ${{ github.repository }}
+          path: .
+          format: 'HTML,XML'
+          out: target/dependency-check
+          args: >
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
       - name: Archive dependency check report
         uses: actions/upload-artifact@v4
         with:
