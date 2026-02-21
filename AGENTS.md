@@ -23,6 +23,8 @@ Use the Maven wrapper to keep builds consistent:
 - Tests use JUnit Jupiter via Spring Boot test starters.
 - Place tests in `src/test/java` mirroring the main package structure.
 - There is no explicit coverage gate; add focused tests for new endpoints or security changes.
+- When writing unit tests, use parameterizeTest to ensure test methods can be re-use;
+- Separate happy tests and unhappy tests in different methods;
 
 ## Commit & Pull Request Guidelines
 - Git history only shows an `initial commit`, so there is no established commit convention yet.
