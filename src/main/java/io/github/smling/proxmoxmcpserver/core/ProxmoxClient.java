@@ -6,12 +6,15 @@ import java.util.Map;
 
 import it.corsinvest.proxmoxve.api.PveClient;
 import it.corsinvest.proxmoxve.api.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 
 /**
  * Wraps the Proxmox API client with convenience helpers and validation.
  */
 public class ProxmoxClient {
+    private static final Logger logger = LoggerFactory.getLogger(ProxmoxClient.class);
     private final PveClient client;
     private final URI baseUri;
     private final String apiToken;
@@ -34,6 +37,7 @@ public class ProxmoxClient {
         this.client.setValidateCertificate(verifySsl);
         this.client.setApiToken(this.apiToken);
         this.client.setTimeout(10_000);
+        logger.debug("Initialized Proxmox client for {} (verifySsl={})", baseUri.getHost(), verifySsl);
     }
 
     /**
@@ -137,30 +141,60 @@ public class ProxmoxClient {
      */
     private Result exchange(String path, HttpMethod method, Map<String, String> query,
                             Map<String, String> form) throws Exception {
+        logger.debug("Proxmox API request: {} {}", method, path);
         Result result;
-        if (HttpMethod.GET.equals(method)) {
-            result = client.get(path, toObjectMap(query));
-        } else if (HttpMethod.POST.equals(method)) {
-            result = client.create(path, toObjectMap(form));
-        } else if (HttpMethod.PUT.equals(method)) {
-            result = client.set(path, toObjectMap(form));
-        } else if (HttpMethod.DELETE.equals(method)) {
-            result = client.delete(path, null);
-        } else {
-            throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+        try {
+            if (HttpMethod.GET.equals(method)) {
+                result = client.get(path, toObjectMap(query));
+            } else if (HttpMethod.POST.equals(method)) {
+                result = client.create(path, toObjectMap(form));
+            } else if (HttpMethod.PUT.equals(method)) {
+                result = client.set(path, toObjectMap(form));
+            } else if (HttpMethod.DELETE.equals(method)) {
+                result = client.delete(path, null);
+            } else {
+                throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+            }
+        } catch (Exception e) {
+            logger.error("Proxmox API request failed: {} {}", method, path, e);
+            throw e;
         }
 
         if (result == null) {
+            logger.error("Proxmox API returned no response for {} {}", method, path);
             throw new IllegalStateException("Proxmox API error: no response");
         }
         if (!result.isSuccessStatusCode()) {
+            logger.error(
+                "Proxmox API error for {} {}: {} {}",
+                method,
+                path,
+                result.getStatusCode(),
+                result.getReasonPhrase()
+            );
             throw new IllegalStateException("Proxmox API error: " + result.getStatusCode() + " " + result.getReasonPhrase());
         }
         if (result.responseInError()) {
+            logger.error("Proxmox API error for {} {}: {}", method, path, result.getError());
             throw new IllegalStateException("Proxmox API error: " + result.getError());
         }
 
+        if (isStateChanging(method)) {
+            logger.info("Proxmox API change ok: {} {} -> {}", method, path, result.getStatusCode());
+        } else {
+            logger.debug("Proxmox API response ok: {} {} -> {}", method, path, result.getStatusCode());
+        }
         return result;
+    }
+
+    /**
+     * Returns true when the HTTP method is expected to mutate state.
+     *
+     * @param method the HTTP method
+     * @return true when state is changed
+     */
+    private boolean isStateChanging(HttpMethod method) {
+        return HttpMethod.POST.equals(method) || HttpMethod.PUT.equals(method) || HttpMethod.DELETE.equals(method);
     }
 
     /**

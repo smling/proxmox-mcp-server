@@ -34,3 +34,10 @@ Use the Maven wrapper to keep builds consistent:
 ## Configuration & Security Notes
 - Keep secrets out of `application.yaml`; use environment variables or a local override file not tracked by git.
 - This project includes Spring Security and Actuator dependencies; document any changes that affect authentication or exposed endpoints.
+
+## Logging guidelines
+- Write debug log to make problem can be trace easily;
+- Write info log to indicate proxmox server change and its change result;
+- Write waning log if something goes wrong but it won't impact outcome;
+- Write error log if result process terminated, need to include stack strace for troubleshooting;
+- Can use color or emoji to make it readable;
