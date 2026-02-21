@@ -68,7 +68,7 @@ jobs:
         with:
           project: ${{ github.repository }}
           path: .
-          format: 'HTML,XML'
+          format: 'ALL'
           out: target/dependency-check
           args: >
             --nvdApiKey ${{ secrets.NVD_API_KEY }}
