@@ -1,4 +1,4 @@
-package io.github.smling;
+package io.github.smling.proxmoxmcpserver;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
