@@ -59,7 +59,9 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Run dependency check
-        run: mvn -B org.owasp:dependency-check-maven:check -Dformat=HTML,XML -DoutputDirectory=target/dependency-check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: mvn -B org.owasp:dependency-check-maven:check -Dformat=HTML,XML -DoutputDirectory=target/dependency-check -DnvdApiKey=${NVD_API_KEY}
       - name: Archive dependency check report
         uses: actions/upload-artifact@v4
         with:
