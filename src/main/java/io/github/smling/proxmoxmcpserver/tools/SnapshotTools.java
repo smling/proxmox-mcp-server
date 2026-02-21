@@ -16,7 +16,7 @@ import java.util.Map;
  * Snapshot-related Proxmox operations for VMs and containers.
  */
 public class SnapshotTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -123,7 +123,7 @@ public class SnapshotTools extends ProxmoxTool {
             if (vmstate && !"lxc".equalsIgnoreCase(vmType)) {
                 builder.append("  RAM State: Included\n");
             }
-            builder.append("\nTask ID: ").append(result).append("\n\n")
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n")
                 .append("Next steps:\n")
                 .append("  - List snapshots: listSnapshots node='").append(node)
                 .append("' vmid='").append(vmid).append("' vmType='").append(vmType).append("'\n")
@@ -156,7 +156,7 @@ public class SnapshotTools extends ProxmoxTool {
             builder.append("  Name: ").append(snapname).append("\n");
             builder.append("  ").append(vmType.toUpperCase()).append(" ID: ").append(vmid).append("\n");
             builder.append("  Node: ").append(node).append("\n\n");
-            builder.append("Task ID: ").append(result);
+            builder.append("Task ID: ").append(taskId(result));
             return builder.toString();
         } catch (Exception e) {
             return errorPayload("delete snapshot '" + snapname + "' for " + vmType + " " + vmid, e);
@@ -211,7 +211,7 @@ public class SnapshotTools extends ProxmoxTool {
                 builder.append("  Deleted newer snapshots: ").append(String.join(", ", deleted)).append("\n");
             }
             builder.append("\nWARNING: VM/container will be stopped during rollback!\n\n");
-            builder.append("Task ID: ").append(result).append("\n\n");
+            builder.append("Task ID: ").append(taskId(result)).append("\n\n");
             builder.append("The VM/container will be restored to its state at the time of the snapshot.");
             return builder.toString();
         } catch (Exception e) {
@@ -233,5 +233,11 @@ public class SnapshotTools extends ProxmoxTool {
         } catch (Exception ignored) {
             return "{\"error\":\"" + e.getMessage() + "\",\"action\":\"" + action + "\"}";
         }
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

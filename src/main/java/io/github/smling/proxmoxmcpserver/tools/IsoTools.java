@@ -14,7 +14,7 @@ import java.util.Map;
  * ISO and template storage operations for Proxmox.
  */
 public class IsoTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Creates ISO tools with a Proxmox client.
@@ -128,7 +128,7 @@ public class IsoTools extends ProxmoxTool {
                 builder.append("  Checksum: ").append((checksumAlgorithm == null ? "sha256" : checksumAlgorithm)
                     .toUpperCase(Locale.ROOT)).append("\n");
             }
-            builder.append("\nTask ID: ").append(result).append("\n\n");
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n");
             builder.append("The download is running in the background.\nUse listIsos to verify when complete.");
             return builder.toString();
         } catch (Exception e) {
@@ -172,7 +172,7 @@ public class IsoTools extends ProxmoxTool {
             builder.append("  Storage: ").append(storage).append("\n");
             builder.append("  Node: ").append(node).append("\n");
             if (result != null) {
-                builder.append("\nTask ID: ").append(result);
+                builder.append("\nTask ID: ").append(taskId(result));
             }
             return builder.toString();
         } catch (Exception e) {
@@ -290,5 +290,11 @@ public class IsoTools extends ProxmoxTool {
         } catch (Exception ignored) {
             return "{\"error\":\"" + e.getMessage() + "\",\"action\":\"" + action + "\"}";
         }
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

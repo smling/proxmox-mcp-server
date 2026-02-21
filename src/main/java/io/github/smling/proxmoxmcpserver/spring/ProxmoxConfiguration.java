@@ -12,6 +12,7 @@ import io.github.smling.proxmoxmcpserver.tools.NodeTools;
 import io.github.smling.proxmoxmcpserver.tools.SnapshotTools;
 import io.github.smling.proxmoxmcpserver.tools.StorageTools;
 import io.github.smling.proxmoxmcpserver.tools.VmTools;
+import java.util.function.Function;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,16 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class ProxmoxConfiguration {
+    private final Function<String, String> envProvider;
+
+    public ProxmoxConfiguration() {
+        this(System::getenv);
+    }
+
+    ProxmoxConfiguration(Function<String, String> envProvider) {
+        this.envProvider = envProvider == null ? System::getenv : envProvider;
+    }
+
     /**
      * Loads the Proxmox MCP configuration from the environment-configured file.
      *
@@ -29,7 +40,10 @@ public class ProxmoxConfiguration {
      */
     @Bean
     public Config proxmoxConfig() {
-        String configPath = System.getenv("PROXMOX_MCP_CONFIG");
+        String configPath = envProvider.apply("PROXMOX_MCP_CONFIG");
+        if (configPath == null || configPath.isBlank()) {
+            configPath = System.getProperty("proxmox.mcp.config");
+        }
         return ConfigLoader.loadConfig(configPath);
     }
 

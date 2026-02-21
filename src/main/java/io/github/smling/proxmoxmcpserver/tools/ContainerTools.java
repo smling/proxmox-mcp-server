@@ -14,7 +14,7 @@ import java.util.Map;
  * Container-related Proxmox operations.
  */
 public class ContainerTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Creates container tools with a Proxmox client.
@@ -291,7 +291,7 @@ public class ContainerTools extends ProxmoxTool {
             builder.append("  Network: ").append(networkBridge).append(" (DHCP)\n");
             builder.append("  Unprivileged: ").append(unprivileged ? "Yes" : "No").append("\n");
             builder.append("  Auto-start: ").append(startAfterCreate ? "Yes" : "No").append("\n\n");
-            builder.append("Task ID: ").append(result).append("\n\n");
+            builder.append("Task ID: ").append(taskId(result)).append("\n\n");
             builder.append("Next steps:\n");
             builder.append("  - Start container: startContainer selector='").append(vmid).append("'\n");
             builder.append("  - Check status: getContainers");
@@ -343,7 +343,7 @@ public class ContainerTools extends ProxmoxTool {
                     JsonNode task = responseData(
                         proxmox.delete("/nodes/" + target.node() + "/lxc/" + target.vmid())
                     );
-                    rec.put("task_id", String.valueOf(task));
+                    rec.put("task_id", taskId(task));
                 } catch (Exception e) {
                     rec.put("ok", false);
                     rec.put("error", e.getMessage());
@@ -880,5 +880,11 @@ public class ContainerTools extends ProxmoxTool {
      */
     private interface Action {
         Object apply(String node, int vmid) throws Exception;
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

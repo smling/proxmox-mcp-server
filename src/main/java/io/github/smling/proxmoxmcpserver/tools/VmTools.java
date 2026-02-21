@@ -199,7 +199,7 @@ public class VmTools extends ProxmoxTool {
                 + "  OS Type: " + ostype + "\n"
                 + "  Network: virtio (bridge=" + networkBridge + ")\n"
                 + "  QEMU Agent: Enabled" + cloudinitNote + "\n\n"
-                + "Task ID: " + taskResult + "\n\n"
+                + "Task ID: " + taskId(taskResult) + "\n\n"
                 + "Next steps:\n"
                 + "  1. Upload an ISO to install the operating system\n"
                 + "  2. Start the VM using startVm\n"
@@ -230,7 +230,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/start", Map.of())
             );
-            return "VM " + vmid + " start initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " start initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -256,7 +256,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/stop", Map.of())
             );
-            return "VM " + vmid + " stop initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " stop initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -282,7 +282,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/shutdown", Map.of())
             );
-            return "VM " + vmid + " graceful shutdown initiated\nTask ID: " + task;
+            return "VM " + vmid + " graceful shutdown initiated\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -308,7 +308,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/reset", Map.of())
             );
-            return "VM " + vmid + " reset initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " reset initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -372,7 +372,7 @@ public class VmTools extends ProxmoxTool {
                 .append("  All virtual disks\n")
                 .append("  All snapshots\n")
                 .append("  Cannot be undone!\n\n")
-                .append("Task ID: ").append(task).append("\n\n")
+                .append("Task ID: ").append(taskId(task)).append("\n\n")
                 .append("VM ").append(vmid).append(" (").append(vmName).append(") is being deleted from node ").append(node);
 
             return result.toString();

@@ -106,6 +106,22 @@ public class ProxmoxTool {
     }
 
     /**
+     * Formats a task identifier for display.
+     *
+     * @param task the task payload
+     * @return the task ID as a string
+     */
+    protected String taskId(JsonNode task) {
+        if (task == null || task.isNull()) {
+            return "null";
+        }
+        if (task.isTextual()) {
+            return task.asText();
+        }
+        return task.toString();
+    }
+
+    /**
      * Casts an object to a list of maps.
      *
      * @param data the object to cast

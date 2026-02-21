@@ -32,6 +32,16 @@ public class ProxmoxManager {
     }
 
     /**
+     * Builds a manager from an existing Proxmox client (primarily for tests).
+     *
+     * @param client the Proxmox client
+     * @param validateConnection whether to validate the connection
+     */
+    ProxmoxManager(ProxmoxClient client, boolean validateConnection) {
+        this.apiClient = validateConnection ? testConnection(client) : client;
+    }
+
+    /**
      * Tests the API connection and returns the usable client.
      *
      * @param client the configured client

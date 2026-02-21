@@ -17,7 +17,7 @@ import java.util.Map;
  * Backup-related Proxmox operations.
  */
 public class BackupTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
@@ -181,7 +181,7 @@ public class BackupTools extends ProxmoxTool {
             if (notes != null && !notes.isBlank()) {
                 builder.append("  Notes: ").append(notes).append("\n");
             }
-            builder.append("\nTask ID: ").append(result).append("\n\n");
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n");
             builder.append("The backup is running in the background.\nUse listBackups to verify when complete.");
             return builder.toString();
         } catch (Exception e) {
@@ -232,7 +232,7 @@ public class BackupTools extends ProxmoxTool {
                 builder.append("  Target Storage: ").append(storage).append("\n");
             }
             builder.append("  Unique MACs: ").append(unique ? "Yes" : "No").append("\n");
-            builder.append("\nTask ID: ").append(result).append("\n\n");
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n");
             builder.append("The restore is running in the background.\nThe ")
                 .append(vmType.toLowerCase(Locale.ROOT))
                 .append(" will be available once the task completes.");
@@ -278,7 +278,7 @@ public class BackupTools extends ProxmoxTool {
             builder.append("  Storage: ").append(storage).append("\n");
             builder.append("  Node: ").append(node).append("\n");
             if (result != null) {
-                builder.append("\nTask ID: ").append(result);
+                builder.append("\nTask ID: ").append(taskId(result));
             }
             return builder.toString();
         } catch (Exception e) {
@@ -316,5 +316,11 @@ public class BackupTools extends ProxmoxTool {
         } catch (Exception ignored) {
             return "{\"error\":\"" + e.getMessage() + "\",\"action\":\"" + action + "\"}";
         }
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }
