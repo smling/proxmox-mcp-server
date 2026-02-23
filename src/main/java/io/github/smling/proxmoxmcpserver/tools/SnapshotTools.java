@@ -12,15 +12,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Snapshot-related Proxmox operations for VMs and containers.
+ */
 public class SnapshotTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
+    /**
+     * Creates snapshot tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public SnapshotTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Lists snapshots for a VM or container.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param vmType VM type (qemu or lxc)
+     * @return formatted snapshot list
+     */
     public String listSnapshots(String node, String vmid, String vmType) {
         try {
             JsonNode snapshots = "lxc".equalsIgnoreCase(vmType)
@@ -64,6 +80,17 @@ public class SnapshotTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Creates a snapshot for a VM or container.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param description snapshot description
+     * @param vmstate include memory state for VMs
+     * @param vmType VM type (qemu or lxc)
+     * @return snapshot creation status
+     */
     public String createSnapshot(
         String node,
         String vmid,
@@ -96,7 +123,7 @@ public class SnapshotTools extends ProxmoxTool {
             if (vmstate && !"lxc".equalsIgnoreCase(vmType)) {
                 builder.append("  RAM State: Included\n");
             }
-            builder.append("\nTask ID: ").append(result).append("\n\n")
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n")
                 .append("Next steps:\n")
                 .append("  - List snapshots: listSnapshots node='").append(node)
                 .append("' vmid='").append(vmid).append("' vmType='").append(vmType).append("'\n")
@@ -110,6 +137,15 @@ public class SnapshotTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Deletes a snapshot for a VM or container.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param vmType VM type (qemu or lxc)
+     * @return snapshot deletion status
+     */
     public String deleteSnapshot(String node, String vmid, String snapname, String vmType) {
         try {
             JsonNode result = "lxc".equalsIgnoreCase(vmType)
@@ -120,13 +156,22 @@ public class SnapshotTools extends ProxmoxTool {
             builder.append("  Name: ").append(snapname).append("\n");
             builder.append("  ").append(vmType.toUpperCase()).append(" ID: ").append(vmid).append("\n");
             builder.append("  Node: ").append(node).append("\n\n");
-            builder.append("Task ID: ").append(result);
+            builder.append("Task ID: ").append(taskId(result));
             return builder.toString();
         } catch (Exception e) {
             return errorPayload("delete snapshot '" + snapname + "' for " + vmType + " " + vmid, e);
         }
     }
 
+    /**
+     * Rolls back a VM or container to a snapshot.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param vmType VM type (qemu or lxc)
+     * @return rollback status message
+     */
     public String rollbackSnapshot(String node, String vmid, String snapname, String vmType) {
         try {
             JsonNode snapshots = "lxc".equalsIgnoreCase(vmType)
@@ -166,7 +211,7 @@ public class SnapshotTools extends ProxmoxTool {
                 builder.append("  Deleted newer snapshots: ").append(String.join(", ", deleted)).append("\n");
             }
             builder.append("\nWARNING: VM/container will be stopped during rollback!\n\n");
-            builder.append("Task ID: ").append(result).append("\n\n");
+            builder.append("Task ID: ").append(taskId(result)).append("\n\n");
             builder.append("The VM/container will be restored to its state at the time of the snapshot.");
             return builder.toString();
         } catch (Exception e) {
@@ -174,6 +219,13 @@ public class SnapshotTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Builds an error payload for MCP responses.
+     *
+     * @param action the action being attempted
+     * @param e the exception thrown
+     * @return JSON error payload
+     */
     private String errorPayload(String action, Exception e) {
         try {
             return OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
@@ -181,5 +233,11 @@ public class SnapshotTools extends ProxmoxTool {
         } catch (Exception ignored) {
             return "{\"error\":\"" + e.getMessage() + "\",\"action\":\"" + action + "\"}";
         }
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

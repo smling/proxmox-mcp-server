@@ -31,8 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
-.tmp/
 
-### Project settings ###
-.env
+### Project files ###
+.tmp
 proxmox-mcp.json
+.env

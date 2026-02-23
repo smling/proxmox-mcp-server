@@ -10,13 +10,30 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Container-related Proxmox operations.
+ */
 public class ContainerTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /**
+     * Creates container tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public ContainerTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Lists containers with optional stats and formatting.
+     *
+     * @param node optional node filter
+     * @param includeStats whether to include live stats
+     * @param includeRaw whether to include raw payloads
+     * @param formatStyle output format style
+     * @return formatted container list
+     */
     public String getContainers(String node, boolean includeStats, boolean includeRaw, String formatStyle) {
         try {
             List<NodeContainerPair> pairs = listCtPairs(node);
@@ -114,12 +131,28 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Starts containers that match the selector.
+     *
+     * @param selector container selector
+     * @param formatStyle output format style
+     * @return action result
+     */
     public String startContainer(String selector, String formatStyle) {
         return containerAction("Start Containers", selector, formatStyle, (node, vmid) ->
             responseData(proxmox.postForm("/nodes/" + node + "/lxc/" + vmid + "/status/start", Map.of()))
         );
     }
 
+    /**
+     * Stops containers that match the selector.
+     *
+     * @param selector container selector
+     * @param graceful whether to request graceful shutdown
+     * @param timeoutSeconds shutdown timeout
+     * @param formatStyle output format style
+     * @return action result
+     */
     public String stopContainer(String selector, boolean graceful, int timeoutSeconds, String formatStyle) {
         return containerAction("Stop Containers", selector, formatStyle, (node, vmid) -> {
             if (graceful) {
@@ -134,12 +167,39 @@ public class ContainerTools extends ProxmoxTool {
         });
     }
 
+    /**
+     * Restarts containers that match the selector.
+     *
+     * @param selector container selector
+     * @param timeoutSeconds restart timeout
+     * @param formatStyle output format style
+     * @return action result
+     */
     public String restartContainer(String selector, int timeoutSeconds, String formatStyle) {
         return containerAction("Restart Containers", selector, formatStyle, (node, vmid) ->
             responseData(proxmox.postForm("/nodes/" + node + "/lxc/" + vmid + "/status/reboot", Map.of()))
         );
     }
 
+    /**
+     * Creates a new container with the supplied configuration.
+     *
+     * @param node host node name
+     * @param vmid container ID
+     * @param ostemplate OS template volume ID
+     * @param hostname container hostname
+     * @param cores CPU core count
+     * @param memory memory limit in MiB
+     * @param swap swap limit in MiB
+     * @param diskSize disk size in GB
+     * @param storage storage pool name
+     * @param password root password
+     * @param sshPublicKeys SSH public keys
+     * @param networkBridge network bridge name
+     * @param startAfterCreate whether to start after creation
+     * @param unprivileged whether to create an unprivileged container
+     * @return creation status message
+     */
     public String createContainer(
         String node,
         String vmid,
@@ -231,7 +291,7 @@ public class ContainerTools extends ProxmoxTool {
             builder.append("  Network: ").append(networkBridge).append(" (DHCP)\n");
             builder.append("  Unprivileged: ").append(unprivileged ? "Yes" : "No").append("\n");
             builder.append("  Auto-start: ").append(startAfterCreate ? "Yes" : "No").append("\n\n");
-            builder.append("Task ID: ").append(result).append("\n\n");
+            builder.append("Task ID: ").append(taskId(result)).append("\n\n");
             builder.append("Next steps:\n");
             builder.append("  - Start container: startContainer selector='").append(vmid).append("'\n");
             builder.append("  - Check status: getContainers");
@@ -241,6 +301,14 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Deletes containers that match the selector.
+     *
+     * @param selector container selector
+     * @param force whether to stop running containers
+     * @param formatStyle output format style
+     * @return action result
+     */
     public String deleteContainer(String selector, boolean force, String formatStyle) {
         try {
             List<ContainerTarget> targets = resolveTargets(selector);
@@ -275,7 +343,7 @@ public class ContainerTools extends ProxmoxTool {
                     JsonNode task = responseData(
                         proxmox.delete("/nodes/" + target.node() + "/lxc/" + target.vmid())
                     );
-                    rec.put("task_id", String.valueOf(task));
+                    rec.put("task_id", taskId(task));
                 } catch (Exception e) {
                     rec.put("ok", false);
                     rec.put("error", e.getMessage());
@@ -292,6 +360,18 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Updates resources for containers that match the selector.
+     *
+     * @param selector container selector
+     * @param cores new CPU core count
+     * @param memory new memory limit in MiB
+     * @param swap new swap limit in MiB
+     * @param diskGb additional disk size in GiB
+     * @param disk disk identifier to resize
+     * @param formatStyle output format style
+     * @return action result
+     */
     public String updateContainerResources(
         String selector,
         Integer cores,
@@ -359,6 +439,15 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Performs an action across resolved container targets.
+     *
+     * @param title action title
+     * @param selector container selector
+     * @param formatStyle output format style
+     * @param action action callback
+     * @return action result
+     */
     private String containerAction(String title, String selector, String formatStyle, Action action) {
         try {
             List<ContainerTarget> targets = resolveTargets(selector);
@@ -392,6 +481,12 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Lists container records for a node or all nodes.
+     *
+     * @param node optional node filter
+     * @return node/container pairs
+     */
     private List<NodeContainerPair> listCtPairs(String node) {
         List<NodeContainerPair> out = new ArrayList<>();
         if (node != null && !node.isBlank()) {
@@ -441,6 +536,12 @@ public class ContainerTools extends ProxmoxTool {
         return out;
     }
 
+    /**
+     * Resolves a selector into unique container targets.
+     *
+     * @param selector selector string
+     * @return resolved container targets
+     */
     private List<ContainerTarget> resolveTargets(String selector) {
         List<ContainerTarget> resolved = new ArrayList<>();
         if (selector == null || selector.isBlank()) {
@@ -516,6 +617,12 @@ public class ContainerTools extends ProxmoxTool {
         return new ArrayList<>(uniq.values());
     }
 
+    /**
+     * Renders container rows into a human-readable format.
+     *
+     * @param rows container rows
+     * @return formatted output
+     */
     private String renderPretty(List<Map<String, Object>> rows) {
         StringBuilder builder = new StringBuilder("Containers\n");
         for (Map<String, Object> row : rows) {
@@ -545,6 +652,13 @@ public class ContainerTools extends ProxmoxTool {
         return builder.toString().trim();
     }
 
+    /**
+     * Renders action results for container operations.
+     *
+     * @param title action title
+     * @param results action result records
+     * @return formatted output
+     */
     private String renderActionResult(String title, List<Map<String, Object>> results) {
         StringBuilder builder = new StringBuilder(title).append("\n");
         for (Map<String, Object> result : results) {
@@ -563,6 +677,13 @@ public class ContainerTools extends ProxmoxTool {
         return builder.toString().trim();
     }
 
+    /**
+     * Builds an error payload for MCP responses.
+     *
+     * @param action the action being attempted
+     * @param e the exception thrown
+     * @return JSON error payload
+     */
     private String errorPayload(String action, Exception e) {
         try {
             return OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
@@ -572,6 +693,12 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Gets a JSON payload or an empty object on error.
+     *
+     * @param path the API path
+     * @return the JSON node, or an empty object
+     */
     private JsonNode getOrEmpty(String path) {
         try {
             return responseData(proxmox.get(path));
@@ -580,6 +707,12 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Formats bytes using IEC units.
+     *
+     * @param n the byte count
+     * @return formatted size string
+     */
     private String bytesToHuman(double n) {
         String[] units = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
         int i = 0;
@@ -590,10 +723,22 @@ public class ContainerTools extends ProxmoxTool {
         return String.format(Locale.US, "%.2f %s", n, units[i]);
     }
 
+    /**
+     * Rounds a value to two decimal places.
+     *
+     * @param value the value to round
+     * @return the rounded value
+     */
     private double roundTwo(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
 
+    /**
+     * Parses an integer value, returning -1 on failure.
+     *
+     * @param value the value to parse
+     * @return the parsed integer or -1
+     */
     private int parseInt(String value) {
         try {
             return Integer.parseInt(value);
@@ -602,6 +747,13 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Extracts the first integer value for matching keys.
+     *
+     * @param node the JSON node
+     * @param keys candidate keys
+     * @return the integer value or 0
+     */
     private int intFromAny(JsonNode node, String... keys) {
         for (String key : keys) {
             if (node.has(key)) {
@@ -615,6 +767,15 @@ public class ContainerTools extends ProxmoxTool {
         return 0;
     }
 
+    /**
+     * Returns the first non-null string from the provided keys.
+     *
+     * @param node the JSON node
+     * @param key1 primary key
+     * @param key2 secondary key
+     * @param fallback fallback value
+     * @return the first available string
+     */
     private String firstText(JsonNode node, String key1, String key2, String fallback) {
         if (node.hasNonNull(key1)) {
             return node.path(key1).asText();
@@ -625,6 +786,12 @@ public class ContainerTools extends ProxmoxTool {
         return fallback;
     }
 
+    /**
+     * Converts a value to a long.
+     *
+     * @param value the value to inspect
+     * @return the long value or 0
+     */
     private long longValue(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -632,6 +799,12 @@ public class ContainerTools extends ProxmoxTool {
         return 0L;
     }
 
+    /**
+     * Converts a value to a double.
+     *
+     * @param value the value to inspect
+     * @return the double value or 0
+     */
     private double doubleValue(Object value) {
         if (value instanceof Number number) {
             return number.doubleValue();
@@ -639,10 +812,23 @@ public class ContainerTools extends ProxmoxTool {
         return 0.0;
     }
 
+    /**
+     * Converts a value to a string with {@code N/A} fallback.
+     *
+     * @param value the value to inspect
+     * @return the string value
+     */
     private String stringValue(Object value) {
         return value == null ? "N/A" : value.toString();
     }
 
+    /**
+     * Retrieves the last RRD sample for a container.
+     *
+     * @param node target node name
+     * @param vmid container ID
+     * @return the last RRD sample
+     */
     private RrdSample rrdLast(String node, int vmid) {
         try {
             JsonNode rrd = responseData(proxmox.get("/nodes/" + node + "/lxc/" + vmid + "/rrddata",
@@ -660,16 +846,45 @@ public class ContainerTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Associates a node name with a container payload.
+     *
+     * @param node the node name
+     * @param container the container payload
+     */
     private record NodeContainerPair(String node, JsonNode container) {
     }
 
+    /**
+     * Represents a resolved container target.
+     *
+     * @param node the node name
+     * @param vmid the container ID
+     * @param label the display label
+     */
     private record ContainerTarget(String node, int vmid, String label) {
     }
 
+    /**
+     * Holds RRD sample values for CPU and memory.
+     *
+     * @param cpuPct CPU percentage
+     * @param memBytes memory usage bytes
+     * @param maxmemBytes maximum memory bytes
+     */
     private record RrdSample(Double cpuPct, Long memBytes, Long maxmemBytes) {
     }
 
+    /**
+     * Action callback for container operations.
+     */
     private interface Action {
         Object apply(String node, int vmid) throws Exception;
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

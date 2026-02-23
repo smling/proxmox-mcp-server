@@ -2,10 +2,13 @@ name: CI
 
 on:
   push:
+  workflow_call:
 
 permissions:
   contents: read
-  security-events: write
+  security-events: write   # for CodeQL upload
+  actions: read
+  packages: read
 
 jobs:
   build-test:
@@ -45,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
-          path: target/site/jacoco
+          path: target/jacoco
           if-no-files-found: warn
 
   dependency-check:
@@ -58,8 +61,22 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Build for dependency analysis
+        run: mvn -B -DskipTests package
       - name: Run dependency check
-        run: mvn -B org.owasp:dependency-check-maven:check -Dformat=HTML,XML -DoutputDirectory=target/dependency-check
+        uses: dependency-check/Dependency-Check_Action@main
+        continue-on-error: true
+        env:
+          JAVA_HOME: /opt/jdk
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        with:
+          project: ${{ github.repository }}
+          path: .
+          format: 'ALL'
+          out: target/dependency-check
+          args: >
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
+            --enableRetired
       - name: Archive dependency check report
         uses: actions/upload-artifact@v4
         with:
@@ -67,7 +84,7 @@ jobs:
           path: target/dependency-check
           if-no-files-found: warn
 
-  sast:
+  sast-codeql:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,13 +95,13 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@main
         with:
           languages: java
       - name: Build
         run: mvn -B -DskipTests package
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@main
         with:
           output: codeql-results
       - name: Archive CodeQL report

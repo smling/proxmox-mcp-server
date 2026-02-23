@@ -1,0 +1,99 @@
+name: CD
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+jobs:
+  ci:
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      security-events: write
+
+  release:
+    if: github.event.pull_request.merged == true
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.MERGE_SHA }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare release metadata
+        id: release_meta
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          TAG="v$(date -u +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            TAG="${TAG}-${GITHUB_RUN_ATTEMPT}"
+          fi
+          NOTES=""
+          if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+            NOTES=$(git log --pretty=format:"- %s" "${BASE_SHA}..${HEAD_SHA}" || true)
+          fi
+          if [ -z "$NOTES" ]; then
+            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+            if [ -n "$PREV_TAG" ]; then
+              NOTES=$(git log --pretty=format:"- %s" "${PREV_TAG}..HEAD")
+            else
+              NOTES=$(git log --pretty=format:"- %s")
+            fi
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="- No changes"
+          fi
+          echo "created=$CREATED" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build and push container image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.release_meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            OCI_TITLE=${{ github.event.repository.name }}
+            OCI_DESCRIPTION=Proxmox MCP Server
+            OCI_VERSION=${{ steps.release_meta.outputs.tag }}
+            OCI_SOURCE=${{ github.server_url }}/${{ github.repository }}
+            OCI_REVISION=${{ env.MERGE_SHA }}
+            OCI_CREATED=${{ steps.release_meta.outputs.created }}
+            OCI_URL=${{ github.server_url }}/${{ github.repository }}
+            OCI_AUTHORS=${{ github.actor }}
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: Release ${{ steps.release_meta.outputs.tag }}
+          body: ${{ steps.release_meta.outputs.notes }}
+          target_commitish: ${{ env.MERGE_SHA }}

@@ -9,13 +9,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Node-related Proxmox operations.
+ */
 public class NodeTools extends ProxmoxTool {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /**
+     * Creates node tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public NodeTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Lists nodes with status and resource usage.
+     *
+     * @return formatted node list
+     */
     public String getNodes() {
         try {
             JsonNode result = responseData(proxmox.get("/nodes"));
@@ -55,6 +68,12 @@ public class NodeTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Retrieves status for a specific node.
+     *
+     * @param nodeName the node name or ID
+     * @return formatted node status
+     */
     public String getNodeStatus(String nodeName) {
         try {
             JsonNode result = responseData(proxmox.get("/nodes/" + nodeName + "/status"));

@@ -13,15 +13,31 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Backup-related Proxmox operations.
+ */
 public class BackupTools extends ProxmoxTool {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
+    /**
+     * Creates backup tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public BackupTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Lists backups across matching nodes and storage pools.
+     *
+     * @param node optional node filter
+     * @param storage optional storage filter
+     * @param vmid optional VM or container filter
+     * @return formatted backup list
+     */
     public String listBackups(String node, String storage, String vmid) {
         try {
             List<JsonNode> results = new ArrayList<>();
@@ -126,6 +142,17 @@ public class BackupTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Starts a backup task for a VM or container.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param storage target storage pool
+     * @param compress compression mode
+     * @param mode backup mode
+     * @param notes optional notes template
+     * @return backup start status
+     */
     public String createBackup(
         String node,
         String vmid,
@@ -154,7 +181,7 @@ public class BackupTools extends ProxmoxTool {
             if (notes != null && !notes.isBlank()) {
                 builder.append("  Notes: ").append(notes).append("\n");
             }
-            builder.append("\nTask ID: ").append(result).append("\n\n");
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n");
             builder.append("The backup is running in the background.\nUse listBackups to verify when complete.");
             return builder.toString();
         } catch (Exception e) {
@@ -162,6 +189,16 @@ public class BackupTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Restores a VM or container from a backup archive.
+     *
+     * @param node target node name
+     * @param archive backup archive volume ID
+     * @param vmid new VM or container ID
+     * @param storage target storage pool
+     * @param unique whether to generate unique MACs
+     * @return restore status message
+     */
     public String restoreBackup(
         String node,
         String archive,
@@ -195,7 +232,7 @@ public class BackupTools extends ProxmoxTool {
                 builder.append("  Target Storage: ").append(storage).append("\n");
             }
             builder.append("  Unique MACs: ").append(unique ? "Yes" : "No").append("\n");
-            builder.append("\nTask ID: ").append(result).append("\n\n");
+            builder.append("\nTask ID: ").append(taskId(result)).append("\n\n");
             builder.append("The restore is running in the background.\nThe ")
                 .append(vmType.toLowerCase(Locale.ROOT))
                 .append(" will be available once the task completes.");
@@ -205,6 +242,14 @@ public class BackupTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Deletes a backup volume from storage.
+     *
+     * @param node target node name
+     * @param storage target storage pool
+     * @param volid backup volume ID
+     * @return deletion status message
+     */
     public String deleteBackup(String node, String storage, String volid) {
         try {
             JsonNode content = responseData(proxmox.get(
@@ -233,7 +278,7 @@ public class BackupTools extends ProxmoxTool {
             builder.append("  Storage: ").append(storage).append("\n");
             builder.append("  Node: ").append(node).append("\n");
             if (result != null) {
-                builder.append("\nTask ID: ").append(result);
+                builder.append("\nTask ID: ").append(taskId(result));
             }
             return builder.toString();
         } catch (Exception e) {
@@ -241,6 +286,12 @@ public class BackupTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Formats bytes using IEC units.
+     *
+     * @param n the byte count
+     * @return formatted size string
+     */
     private String bytesToHuman(double n) {
         String[] units = {"B", "KiB", "MiB", "GiB", "TiB"};
         int i = 0;
@@ -251,6 +302,13 @@ public class BackupTools extends ProxmoxTool {
         return String.format(Locale.US, "%.2f %s", n, units[i]);
     }
 
+    /**
+     * Builds an error payload for MCP responses.
+     *
+     * @param action the action being attempted
+     * @param e the exception thrown
+     * @return JSON error payload
+     */
     private String errorPayload(String action, Exception e) {
         try {
             return OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
@@ -258,5 +316,11 @@ public class BackupTools extends ProxmoxTool {
         } catch (Exception ignored) {
             return "{\"error\":\"" + e.getMessage() + "\",\"action\":\"" + action + "\"}";
         }
+    }
+
+    static ObjectMapper swapObjectMapper(ObjectMapper replacement) {
+        ObjectMapper original = OBJECT_MAPPER;
+        OBJECT_MAPPER = replacement;
+        return original;
     }
 }

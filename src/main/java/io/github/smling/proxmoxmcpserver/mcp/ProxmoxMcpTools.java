@@ -12,6 +12,9 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 
+/**
+ * MCP tool facade that delegates Proxmox operations to tool services.
+ */
 @Service
 public class ProxmoxMcpTools {
     private final NodeTools nodeTools;
@@ -23,6 +26,18 @@ public class ProxmoxMcpTools {
     private final IsoTools isoTools;
     private final BackupTools backupTools;
 
+    /**
+     * Creates the MCP tool facade with injected tool handlers.
+     *
+     * @param nodeTools node-related tools
+     * @param vmTools VM-related tools
+     * @param storageTools storage-related tools
+     * @param clusterTools cluster-related tools
+     * @param containerTools container-related tools
+     * @param snapshotTools snapshot-related tools
+     * @param isoTools ISO/template tools
+     * @param backupTools backup tools
+     */
     public ProxmoxMcpTools(
         NodeTools nodeTools,
         VmTools vmTools,
@@ -43,21 +58,51 @@ public class ProxmoxMcpTools {
         this.backupTools = backupTools;
     }
 
+    /**
+     * Lists cluster nodes with status and resource usage.
+     *
+     * @return formatted node list
+     */
     @Tool(name = "get_nodes", description = ToolDescriptions.GET_NODES_DESC)
     public String getNodes() {
         return nodeTools.getNodes();
     }
 
+    /**
+     * Retrieves detailed status for a single node.
+     *
+     * @param node the node name or ID
+     * @return formatted node status
+     */
     @Tool(name = "get_node_status", description = ToolDescriptions.GET_NODE_STATUS_DESC)
     public String getNodeStatus(@ToolParam(description = "Node name or ID") String node) {
         return nodeTools.getNodeStatus(required(node, "node"));
     }
 
+    /**
+     * Lists virtual machines across the cluster.
+     *
+     * @return formatted VM list
+     */
     @Tool(name = "get_vms", description = ToolDescriptions.GET_VMS_DESC)
     public String getVms() {
         return vmTools.getVms();
     }
 
+    /**
+     * Creates a new virtual machine with the supplied configuration.
+     *
+     * @param node host node name
+     * @param vmid new VM ID
+     * @param name VM name
+     * @param cpus CPU core count
+     * @param memory memory size in MB
+     * @param diskSize disk size in GB
+     * @param storage storage pool name
+     * @param ostype OS type
+     * @param networkBridge network bridge name
+     * @return creation status message
+     */
     @Tool(name = "create_vm", description = ToolDescriptions.CREATE_VM_DESC)
     public String createVm(
         @ToolParam(description = "Host node name") String node,
@@ -83,6 +128,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Executes a shell command inside a VM using the guest agent.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param command command to execute
+     * @return formatted command output
+     */
     @Tool(name = "execute_vm_command", description = ToolDescriptions.EXECUTE_VM_COMMAND_DESC)
     public String executeVmCommand(
         @ToolParam(description = "Host node name") String node,
@@ -96,6 +149,13 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Starts a virtual machine.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return start status message
+     */
     @Tool(name = "start_vm", description = ToolDescriptions.START_VM_DESC)
     public String startVm(
         @ToolParam(description = "Host node name") String node,
@@ -104,6 +164,13 @@ public class ProxmoxMcpTools {
         return vmTools.startVm(required(node, "node"), required(vmid, "vmid"));
     }
 
+    /**
+     * Stops a virtual machine.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return stop status message
+     */
     @Tool(name = "stop_vm", description = ToolDescriptions.STOP_VM_DESC)
     public String stopVm(
         @ToolParam(description = "Host node name") String node,
@@ -112,6 +179,13 @@ public class ProxmoxMcpTools {
         return vmTools.stopVm(required(node, "node"), required(vmid, "vmid"));
     }
 
+    /**
+     * Shuts down a virtual machine gracefully.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return shutdown status message
+     */
     @Tool(name = "shutdown_vm", description = ToolDescriptions.SHUTDOWN_VM_DESC)
     public String shutdownVm(
         @ToolParam(description = "Host node name") String node,
@@ -120,6 +194,13 @@ public class ProxmoxMcpTools {
         return vmTools.shutdownVm(required(node, "node"), required(vmid, "vmid"));
     }
 
+    /**
+     * Resets a virtual machine.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return reset status message
+     */
     @Tool(name = "reset_vm", description = ToolDescriptions.RESET_VM_DESC)
     public String resetVm(
         @ToolParam(description = "Host node name") String node,
@@ -128,6 +209,14 @@ public class ProxmoxMcpTools {
         return vmTools.resetVm(required(node, "node"), required(vmid, "vmid"));
     }
 
+    /**
+     * Deletes a virtual machine.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param force force deletion even if running
+     * @return deletion status message
+     */
     @Tool(name = "delete_vm", description = ToolDescriptions.DELETE_VM_DESC)
     public String deleteVm(
         @ToolParam(description = "Host node name") String node,
@@ -138,16 +227,35 @@ public class ProxmoxMcpTools {
         return vmTools.deleteVm(required(node, "node"), required(vmid, "vmid"), forceDelete);
     }
 
+    /**
+     * Lists storage pools and usage across the cluster.
+     *
+     * @return formatted storage list
+     */
     @Tool(name = "get_storage", description = ToolDescriptions.GET_STORAGE_DESC)
     public String getStorage() {
         return storageTools.getStorage();
     }
 
+    /**
+     * Retrieves cluster status and quorum information.
+     *
+     * @return formatted cluster status
+     */
     @Tool(name = "get_cluster_status", description = ToolDescriptions.GET_CLUSTER_STATUS_DESC)
     public String getClusterStatus() {
         return clusterTools.getClusterStatus();
     }
 
+    /**
+     * Lists containers with optional filters and format selection.
+     *
+     * @param node optional node filter
+     * @param includeStats include live stats when true
+     * @param includeRaw include raw payloads when true
+     * @param formatStyle output format style
+     * @return formatted container list
+     */
     @Tool(name = "get_containers", description = ToolDescriptions.GET_CONTAINERS_DESC)
     public String getContainers(
         @ToolParam(description = "Optional node filter") String node,
@@ -161,6 +269,13 @@ public class ProxmoxMcpTools {
         return containerTools.getContainers(node, includeStatsValue, includeRawValue, formatStyleValue);
     }
 
+    /**
+     * Starts one or more containers based on a selector.
+     *
+     * @param selector container selector
+     * @param formatStyle output format style
+     * @return formatted action result
+     */
     @Tool(name = "start_container", description = ToolDescriptions.START_CONTAINER_DESC)
     public String startContainer(
         @ToolParam(description = "Container selector") String selector,
@@ -169,6 +284,15 @@ public class ProxmoxMcpTools {
         return containerTools.startContainer(required(selector, "selector"), defaultFormatStyle(formatStyle));
     }
 
+    /**
+     * Stops one or more containers.
+     *
+     * @param selector container selector
+     * @param graceful whether to request shutdown
+     * @param timeoutSeconds shutdown timeout
+     * @param formatStyle output format style
+     * @return formatted action result
+     */
     @Tool(name = "stop_container", description = ToolDescriptions.STOP_CONTAINER_DESC)
     public String stopContainer(
         @ToolParam(description = "Container selector") String selector,
@@ -186,6 +310,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Restarts one or more containers.
+     *
+     * @param selector container selector
+     * @param timeoutSeconds restart timeout
+     * @param formatStyle output format style
+     * @return formatted action result
+     */
     @Tool(name = "restart_container", description = ToolDescriptions.RESTART_CONTAINER_DESC)
     public String restartContainer(
         @ToolParam(description = "Container selector") String selector,
@@ -200,6 +332,18 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Updates resources for one or more containers.
+     *
+     * @param selector container selector
+     * @param cores new CPU core count
+     * @param memory new memory limit in MiB
+     * @param swap new swap limit in MiB
+     * @param diskGb additional disk size in GiB
+     * @param disk disk identifier to resize
+     * @param formatStyle output format style
+     * @return formatted action result
+     */
     @Tool(name = "update_container_resources", description = ToolDescriptions.UPDATE_CONTAINER_RESOURCES_DESC)
     public String updateContainerResources(
         @ToolParam(description = "Container selector") String selector,
@@ -222,6 +366,25 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Creates a new LXC container.
+     *
+     * @param node host node name
+     * @param vmid container ID
+     * @param ostemplate OS template volume ID
+     * @param hostname container hostname
+     * @param cores CPU core count
+     * @param memory memory limit in MiB
+     * @param swap swap limit in MiB
+     * @param diskSize disk size in GB
+     * @param storage storage pool name
+     * @param password root password
+     * @param sshPublicKeys SSH public keys
+     * @param networkBridge network bridge name
+     * @param startAfterCreate whether to start after creation
+     * @param unprivileged whether to create an unprivileged container
+     * @return creation status message
+     */
     @Tool(name = "create_container", description = ToolDescriptions.CREATE_CONTAINER_DESC)
     public String createContainer(
         @ToolParam(description = "Host node name") String node,
@@ -265,6 +428,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Deletes one or more containers.
+     *
+     * @param selector container selector
+     * @param force force deletion even if running
+     * @param formatStyle output format style
+     * @return formatted action result
+     */
     @Tool(name = "delete_container", description = ToolDescriptions.DELETE_CONTAINER_DESC)
     public String deleteContainer(
         @ToolParam(description = "Container selector") String selector,
@@ -279,6 +450,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Lists snapshots for a VM or container.
+     *
+     * @param node host node name
+     * @param vmid VM or container ID
+     * @param vmType VM type (qemu or lxc)
+     * @return formatted snapshot list
+     */
     @Tool(name = "list_snapshots", description = ToolDescriptions.LIST_SNAPSHOTS_DESC)
     public String listSnapshots(
         @ToolParam(description = "Host node name") String node,
@@ -289,6 +468,17 @@ public class ProxmoxMcpTools {
         return snapshotTools.listSnapshots(required(node, "node"), required(vmid, "vmid"), vmTypeValue);
     }
 
+    /**
+     * Creates a snapshot for a VM or container.
+     *
+     * @param node host node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param description snapshot description
+     * @param vmstate include memory state for VMs
+     * @param vmType VM type (qemu or lxc)
+     * @return snapshot creation status
+     */
     @Tool(name = "create_snapshot", description = ToolDescriptions.CREATE_SNAPSHOT_DESC)
     public String createSnapshot(
         @ToolParam(description = "Host node name") String node,
@@ -310,6 +500,15 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Deletes a snapshot for a VM or container.
+     *
+     * @param node host node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param vmType VM type (qemu or lxc)
+     * @return snapshot deletion status
+     */
     @Tool(name = "delete_snapshot", description = ToolDescriptions.DELETE_SNAPSHOT_DESC)
     public String deleteSnapshot(
         @ToolParam(description = "Host node name") String node,
@@ -326,6 +525,15 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Rolls back to a snapshot for a VM or container.
+     *
+     * @param node host node name
+     * @param vmid VM or container ID
+     * @param snapname snapshot name
+     * @param vmType VM type (qemu or lxc)
+     * @return rollback status message
+     */
     @Tool(name = "rollback_snapshot", description = ToolDescriptions.ROLLBACK_SNAPSHOT_DESC)
     public String rollbackSnapshot(
         @ToolParam(description = "Host node name") String node,
@@ -342,6 +550,13 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Lists ISO images in storage.
+     *
+     * @param node optional node filter
+     * @param storage optional storage filter
+     * @return formatted ISO list
+     */
     @Tool(name = "list_isos", description = ToolDescriptions.LIST_ISOS_DESC)
     public String listIsos(
         @ToolParam(description = "Optional node filter") String node,
@@ -350,6 +565,13 @@ public class ProxmoxMcpTools {
         return isoTools.listIsos(node, storage);
     }
 
+    /**
+     * Lists OS templates in storage.
+     *
+     * @param node optional node filter
+     * @param storage optional storage filter
+     * @return formatted template list
+     */
     @Tool(name = "list_templates", description = ToolDescriptions.LIST_TEMPLATES_DESC)
     public String listTemplates(
         @ToolParam(description = "Optional node filter") String node,
@@ -358,6 +580,17 @@ public class ProxmoxMcpTools {
         return isoTools.listTemplates(node, storage);
     }
 
+    /**
+     * Downloads an ISO image to Proxmox storage.
+     *
+     * @param node target node name
+     * @param storage target storage pool
+     * @param url ISO download URL
+     * @param filename ISO filename
+     * @param checksum optional checksum
+     * @param checksumAlgorithm checksum algorithm
+     * @return download status message
+     */
     @Tool(name = "download_iso", description = ToolDescriptions.DOWNLOAD_ISO_DESC)
     public String downloadIso(
         @ToolParam(description = "Target node name") String node,
@@ -378,6 +611,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Deletes an ISO image or template.
+     *
+     * @param node target node name
+     * @param storage target storage pool
+     * @param filename ISO or template filename
+     * @return deletion status message
+     */
     @Tool(name = "delete_iso", description = ToolDescriptions.DELETE_ISO_DESC)
     public String deleteIso(
         @ToolParam(description = "Target node name") String node,
@@ -391,6 +632,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Lists backups in Proxmox storage.
+     *
+     * @param node optional node filter
+     * @param storage optional storage filter
+     * @param vmid optional VM/container filter
+     * @return formatted backup list
+     */
     @Tool(name = "list_backups", description = ToolDescriptions.LIST_BACKUPS_DESC)
     public String listBackups(
         @ToolParam(description = "Optional node filter") String node,
@@ -400,6 +649,17 @@ public class ProxmoxMcpTools {
         return backupTools.listBackups(node, storage, vmid);
     }
 
+    /**
+     * Creates a backup for a VM or container.
+     *
+     * @param node target node name
+     * @param vmid VM or container ID
+     * @param storage target storage pool
+     * @param compress compression mode
+     * @param mode backup mode
+     * @param notes optional notes
+     * @return backup creation status
+     */
     @Tool(name = "create_backup", description = ToolDescriptions.CREATE_BACKUP_DESC)
     public String createBackup(
         @ToolParam(description = "Target node name") String node,
@@ -419,6 +679,16 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Restores a VM or container from a backup.
+     *
+     * @param node target node name
+     * @param archive backup archive volume ID
+     * @param vmid new VM/container ID
+     * @param storage target storage pool
+     * @param unique whether to generate unique MACs
+     * @return restore status message
+     */
     @Tool(name = "restore_backup", description = ToolDescriptions.RESTORE_BACKUP_DESC)
     public String restoreBackup(
         @ToolParam(description = "Target node name") String node,
@@ -437,6 +707,14 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Deletes a backup volume.
+     *
+     * @param node target node name
+     * @param storage target storage pool
+     * @param volid backup volume ID
+     * @return deletion status message
+     */
     @Tool(name = "delete_backup", description = ToolDescriptions.DELETE_BACKUP_DESC)
     public String deleteBackup(
         @ToolParam(description = "Target node name") String node,
@@ -450,6 +728,12 @@ public class ProxmoxMcpTools {
         );
     }
 
+    /**
+     * Applies the default format style when none is provided.
+     *
+     * @param formatStyle requested format style
+     * @return resolved format style
+     */
     private String defaultFormatStyle(String formatStyle) {
         if (formatStyle == null || formatStyle.isBlank()) {
             return "pretty";
@@ -457,6 +741,13 @@ public class ProxmoxMcpTools {
         return formatStyle;
     }
 
+    /**
+     * Ensures a required string parameter is provided.
+     *
+     * @param value the value to validate
+     * @param fieldName the field name for error messages
+     * @return the validated value
+     */
     private String required(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

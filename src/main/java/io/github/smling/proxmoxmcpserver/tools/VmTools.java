@@ -10,14 +10,27 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Virtual machine operations for Proxmox.
+ */
 public class VmTools extends ProxmoxTool {
     private final VmConsoleManager consoleManager;
 
+    /**
+     * Creates VM tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public VmTools(ProxmoxClient proxmox) {
         super(proxmox);
         this.consoleManager = new VmConsoleManager(proxmox);
     }
 
+    /**
+     * Lists virtual machines across the cluster.
+     *
+     * @return formatted VM list
+     */
     public String getVms() {
         List<Map<String, Object>> result = new ArrayList<>();
         try {
@@ -66,6 +79,20 @@ public class VmTools extends ProxmoxTool {
         return formatResponse(result, "vms");
     }
 
+    /**
+     * Creates a new VM with the supplied configuration.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param name VM name
+     * @param cpus CPU core count
+     * @param memory memory size in MB
+     * @param diskSize disk size in GB
+     * @param storage storage pool name
+     * @param ostype OS type
+     * @param networkBridge network bridge name
+     * @return creation status message
+     */
     public String createVm(
         String node,
         String vmid,
@@ -172,7 +199,7 @@ public class VmTools extends ProxmoxTool {
                 + "  OS Type: " + ostype + "\n"
                 + "  Network: virtio (bridge=" + networkBridge + ")\n"
                 + "  QEMU Agent: Enabled" + cloudinitNote + "\n\n"
-                + "Task ID: " + taskResult + "\n\n"
+                + "Task ID: " + taskId(taskResult) + "\n\n"
                 + "Next steps:\n"
                 + "  1. Upload an ISO to install the operating system\n"
                 + "  2. Start the VM using startVm\n"
@@ -187,6 +214,13 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Starts a VM.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return start status message
+     */
     public String startVm(String node, String vmid) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -196,7 +230,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/start", Map.of())
             );
-            return "VM " + vmid + " start initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " start initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -206,6 +240,13 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Stops a VM.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return stop status message
+     */
     public String stopVm(String node, String vmid) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -215,7 +256,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/stop", Map.of())
             );
-            return "VM " + vmid + " stop initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " stop initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -225,6 +266,13 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Shuts down a VM gracefully.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return shutdown status message
+     */
     public String shutdownVm(String node, String vmid) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -234,7 +282,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/shutdown", Map.of())
             );
-            return "VM " + vmid + " graceful shutdown initiated\nTask ID: " + task;
+            return "VM " + vmid + " graceful shutdown initiated\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -244,6 +292,13 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Resets a VM.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @return reset status message
+     */
     public String resetVm(String node, String vmid) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -253,7 +308,7 @@ public class VmTools extends ProxmoxTool {
             JsonNode task = responseData(
                 proxmox.postForm("/nodes/" + node + "/qemu/" + vmid + "/status/reset", Map.of())
             );
-            return "VM " + vmid + " reset initiated successfully\nTask ID: " + task;
+            return "VM " + vmid + " reset initiated successfully\nTask ID: " + taskId(task);
         } catch (Exception e) {
             if (messageHasNotFound(e)) {
                 throw new IllegalArgumentException("VM " + vmid + " not found on node " + node);
@@ -263,6 +318,14 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Executes a command inside a VM via the guest agent.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param command command to execute
+     * @return formatted command output
+     */
     public String executeCommand(String node, String vmid, String command) {
         try {
             Map<String, Object> result = consoleManager.executeCommand(node, vmid, command);
@@ -276,6 +339,14 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Deletes a VM, optionally stopping it first.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param force force deletion even if running
+     * @return deletion status message
+     */
     public String deleteVm(String node, String vmid, boolean force) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -301,7 +372,7 @@ public class VmTools extends ProxmoxTool {
                 .append("  All virtual disks\n")
                 .append("  All snapshots\n")
                 .append("  Cannot be undone!\n\n")
-                .append("Task ID: ").append(task).append("\n\n")
+                .append("Task ID: ").append(taskId(task)).append("\n\n")
                 .append("VM ").append(vmid).append(" (").append(vmName).append(") is being deleted from node ").append(node);
 
             return result.toString();
@@ -316,6 +387,13 @@ public class VmTools extends ProxmoxTool {
         }
     }
 
+    /**
+     * Selects a storage pool by name when it supports VM images.
+     *
+     * @param storageList the storage list
+     * @param name the preferred storage name
+     * @return the selected storage name or {@code null}
+     */
     private String pickStorage(JsonNode storageList, String name) {
         for (JsonNode store : storageList) {
             if (name.equals(store.path("storage").asText()) && store.path("content").asText("").contains("images")) {
@@ -325,6 +403,12 @@ public class VmTools extends ProxmoxTool {
         return null;
     }
 
+    /**
+     * Checks if an exception message indicates a missing resource.
+     *
+     * @param e the exception to inspect
+     * @return {@code true} when the message suggests a not-found error
+     */
     private boolean messageHasNotFound(Exception e) {
         String message = e.getMessage();
         if (message == null) {

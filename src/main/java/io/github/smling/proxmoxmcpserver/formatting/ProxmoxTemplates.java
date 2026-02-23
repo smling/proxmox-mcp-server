@@ -3,10 +3,22 @@ package io.github.smling.proxmoxmcpserver.formatting;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Template helpers for rendering Proxmox API responses.
+ */
 public final class ProxmoxTemplates {
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private ProxmoxTemplates() {
     }
 
+    /**
+     * Renders a list of nodes as a human-readable summary.
+     *
+     * @param nodes the node records
+     * @return formatted node list
+     */
     public static String nodeList(List<Map<String, Object>> nodes) {
         StringBuilder builder = new StringBuilder("Proxmox Nodes");
         for (Map<String, Object> node : nodes) {
@@ -27,6 +39,13 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Renders a single node status summary.
+     *
+     * @param node the node name
+     * @param status the node status payload
+     * @return formatted node status
+     */
     public static String nodeStatus(String node, Map<String, Object> status) {
         StringBuilder builder = new StringBuilder("Node: ").append(node);
         builder.append("\n  Status: ").append(stringValue(status.get("status")).toUpperCase());
@@ -44,6 +63,12 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Renders a list of VMs as a human-readable summary.
+     *
+     * @param vms the VM records
+     * @return formatted VM list
+     */
     public static String vmList(List<Map<String, Object>> vms) {
         StringBuilder builder = new StringBuilder("Virtual Machines");
         for (Map<String, Object> vm : vms) {
@@ -64,6 +89,12 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Renders a list of storage pools as a human-readable summary.
+     *
+     * @param storage the storage records
+     * @return formatted storage list
+     */
     public static String storageList(List<Map<String, Object>> storage) {
         StringBuilder builder = new StringBuilder("Storage Pools");
         for (Map<String, Object> store : storage) {
@@ -82,6 +113,12 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Renders a list of containers as a human-readable summary.
+     *
+     * @param containers the container records
+     * @return formatted container list
+     */
     public static String containerList(List<Map<String, Object>> containers) {
         if (containers.isEmpty()) {
             return "No containers found";
@@ -106,6 +143,12 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Renders a cluster status summary.
+     *
+     * @param status the cluster status payload
+     * @return formatted cluster status
+     */
     public static String clusterStatus(Map<String, Object> status) {
         StringBuilder builder = new StringBuilder("Proxmox Cluster");
         builder.append("\n\n  Name: ").append(stringValue(status.get("name")));
@@ -118,6 +161,12 @@ public final class ProxmoxTemplates {
         return builder.toString();
     }
 
+    /**
+     * Converts a value to a map when possible.
+     *
+     * @param value the value to inspect
+     * @return the map value or an empty map
+     */
     @SuppressWarnings("unchecked")
     private static Map<String, Object> mapValue(Object value) {
         if (value instanceof Map<?, ?> map) {
@@ -126,6 +175,12 @@ public final class ProxmoxTemplates {
         return Map.of();
     }
 
+    /**
+     * Converts a value to a long, defaulting to 0.
+     *
+     * @param value the value to inspect
+     * @return the long value or 0
+     */
     private static long longValue(Object value) {
         if (value instanceof Number number) {
             return number.longValue();
@@ -133,6 +188,12 @@ public final class ProxmoxTemplates {
         return 0;
     }
 
+    /**
+     * Converts a value to a boolean, defaulting to false.
+     *
+     * @param value the value to inspect
+     * @return the boolean value or false
+     */
     private static boolean booleanValue(Object value) {
         if (value instanceof Boolean bool) {
             return bool;
@@ -140,6 +201,12 @@ public final class ProxmoxTemplates {
         return false;
     }
 
+    /**
+     * Converts a value to a string, defaulting to {@code N/A}.
+     *
+     * @param value the value to inspect
+     * @return the string representation
+     */
     private static String stringValue(Object value) {
         return value == null ? "N/A" : value.toString();
     }

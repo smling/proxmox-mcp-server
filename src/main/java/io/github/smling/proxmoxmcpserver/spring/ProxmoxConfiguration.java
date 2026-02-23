@@ -12,64 +12,146 @@ import io.github.smling.proxmoxmcpserver.tools.NodeTools;
 import io.github.smling.proxmoxmcpserver.tools.SnapshotTools;
 import io.github.smling.proxmoxmcpserver.tools.StorageTools;
 import io.github.smling.proxmoxmcpserver.tools.VmTools;
+import java.util.function.Function;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Spring configuration that wires Proxmox clients and MCP tools.
+ */
 @Configuration
 public class ProxmoxConfiguration {
+    private final Function<String, String> envProvider;
+
+    public ProxmoxConfiguration() {
+        this(System::getenv);
+    }
+
+    ProxmoxConfiguration(Function<String, String> envProvider) {
+        this.envProvider = envProvider == null ? System::getenv : envProvider;
+    }
+
+    /**
+     * Loads the Proxmox MCP configuration from the environment-configured file.
+     *
+     * @return the application configuration
+     */
     @Bean
     public Config proxmoxConfig() {
-        String configPath = System.getenv("PROXMOX_MCP_CONFIG");
+        String configPath = envProvider.apply("PROXMOX_MCP_CONFIG");
+        if (configPath == null || configPath.isBlank()) {
+            configPath = System.getProperty("proxmox.mcp.config");
+        }
         return ConfigLoader.loadConfig(configPath);
     }
 
+    /**
+     * Builds the Proxmox manager that validates the API connection.
+     *
+     * @param config the parsed configuration
+     * @return the manager instance
+     */
     @Bean
     public ProxmoxManager proxmoxManager(Config config) {
         return new ProxmoxManager(config.getProxmox(), config.getAuth());
     }
 
+    /**
+     * Creates the node tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return node tools
+     */
     @Bean
     public NodeTools nodeTools(ProxmoxManager manager) {
         return new NodeTools(manager.getApi());
     }
 
+    /**
+     * Creates the VM tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return VM tools
+     */
     @Bean
     public VmTools vmTools(ProxmoxManager manager) {
         return new VmTools(manager.getApi());
     }
 
+    /**
+     * Creates the storage tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return storage tools
+     */
     @Bean
     public StorageTools storageTools(ProxmoxManager manager) {
         return new StorageTools(manager.getApi());
     }
 
+    /**
+     * Creates the cluster tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return cluster tools
+     */
     @Bean
     public ClusterTools clusterTools(ProxmoxManager manager) {
         return new ClusterTools(manager.getApi());
     }
 
+    /**
+     * Creates the container tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return container tools
+     */
     @Bean
     public ContainerTools containerTools(ProxmoxManager manager) {
         return new ContainerTools(manager.getApi());
     }
 
+    /**
+     * Creates the snapshot tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return snapshot tools
+     */
     @Bean
     public SnapshotTools snapshotTools(ProxmoxManager manager) {
         return new SnapshotTools(manager.getApi());
     }
 
+    /**
+     * Creates the ISO/template tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return ISO tools
+     */
     @Bean
     public IsoTools isoTools(ProxmoxManager manager) {
         return new IsoTools(manager.getApi());
     }
 
+    /**
+     * Creates the backup tools bean.
+     *
+     * @param manager the Proxmox manager
+     * @return backup tools
+     */
     @Bean
     public BackupTools backupTools(ProxmoxManager manager) {
         return new BackupTools(manager.getApi());
     }
 
+    /**
+     * Registers tool callbacks for MCP.
+     *
+     * @param proxmoxMcpTools the tool facade
+     * @return the callback provider
+     */
     @Bean
     public ToolCallbackProvider proxmoxToolCallbacks(ProxmoxMcpTools proxmoxMcpTools) {
         return MethodToolCallbackProvider.builder().toolObjects(proxmoxMcpTools).build();

@@ -1,6 +1,12 @@
 package io.github.smling.proxmoxmcpserver.mcp;
 
+/**
+ * Static tool descriptions surfaced through MCP metadata.
+ */
 public final class ToolDescriptions {
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private ToolDescriptions() {
     }
 

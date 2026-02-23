@@ -8,11 +8,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Storage-related Proxmox operations.
+ */
 public class StorageTools extends ProxmoxTool {
+    /**
+     * Creates storage tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public StorageTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Lists storage pools with usage metrics.
+     *
+     * @return formatted storage list
+     */
     public String getStorage() {
         try {
             JsonNode result = responseData(proxmox.get("/storage"));

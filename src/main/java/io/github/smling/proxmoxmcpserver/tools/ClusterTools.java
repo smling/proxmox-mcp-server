@@ -8,11 +8,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Cluster-related Proxmox operations.
+ */
 public class ClusterTools extends ProxmoxTool {
+    /**
+     * Creates cluster tools with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public ClusterTools(ProxmoxClient proxmox) {
         super(proxmox);
     }
 
+    /**
+     * Returns cluster status details and resource counts.
+     *
+     * @return formatted cluster status
+     */
     public String getClusterStatus() {
         try {
             JsonNode result = responseData(proxmox.get("/cluster/status"));

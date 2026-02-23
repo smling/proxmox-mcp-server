@@ -23,6 +23,8 @@ Use the Maven wrapper to keep builds consistent:
 - Tests use JUnit Jupiter via Spring Boot test starters.
 - Place tests in `src/test/java` mirroring the main package structure.
 - There is no explicit coverage gate; add focused tests for new endpoints or security changes.
+- When writing unit tests, use parameterizeTest to ensure test methods can be re-use;
+- Separate happy tests and unhappy tests in different methods;
 
 ## Commit & Pull Request Guidelines
 - Git history only shows an `initial commit`, so there is no established commit convention yet.
@@ -32,3 +34,10 @@ Use the Maven wrapper to keep builds consistent:
 ## Configuration & Security Notes
 - Keep secrets out of `application.yaml`; use environment variables or a local override file not tracked by git.
 - This project includes Spring Security and Actuator dependencies; document any changes that affect authentication or exposed endpoints.
+
+## Logging guidelines
+- Write debug log to make problem can be trace easily;
+- Write info log to indicate proxmox server change and its change result;
+- Write waning log if something goes wrong but it won't impact outcome;
+- Write error log if result process terminated, need to include stack strace for troubleshooting;
+- Can use color or emoji to make it readable;

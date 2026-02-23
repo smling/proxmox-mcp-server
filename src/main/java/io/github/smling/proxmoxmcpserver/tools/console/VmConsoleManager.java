@@ -10,14 +10,30 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Executes commands inside VMs via the Proxmox guest agent.
+ */
 public class VmConsoleManager {
     private final ProxmoxClient proxmox;
     private static final Logger logger = LoggerFactory.getLogger(VmConsoleManager.class);
 
+    /**
+     * Creates a console manager with a Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public VmConsoleManager(ProxmoxClient proxmox) {
         this.proxmox = proxmox;
     }
 
+    /**
+     * Executes a command inside a VM using the QEMU guest agent.
+     *
+     * @param node host node name
+     * @param vmid VM ID
+     * @param command command to execute
+     * @return result payload with output and exit code
+     */
     public Map<String, Object> executeCommand(String node, String vmid, String command) {
         try {
             JsonNode status = responseData(proxmox.get("/nodes/" + node + "/qemu/" + vmid + "/status/current"));
@@ -69,6 +85,12 @@ public class VmConsoleManager {
         }
     }
 
+    /**
+     * Extracts the data section from a Proxmox API response.
+     *
+     * @param result the Proxmox API result
+     * @return the data node or a missing node
+     */
     private JsonNode responseData(Result result) {
         JsonNode response = result.getResponse();
         if (response == null || response.isNull()) {

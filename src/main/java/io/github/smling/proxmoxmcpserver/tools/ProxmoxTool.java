@@ -13,16 +13,31 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Base class for Proxmox tool implementations.
+ */
 public class ProxmoxTool {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected final ProxmoxClient proxmox;
     protected final Logger logger;
 
+    /**
+     * Creates a tool with a configured Proxmox client.
+     *
+     * @param proxmox the Proxmox client
+     */
     public ProxmoxTool(ProxmoxClient proxmox) {
         this.proxmox = proxmox;
         this.logger = LoggerFactory.getLogger(getClass());
     }
 
+    /**
+     * Formats a response payload using templates or JSON pretty printing.
+     *
+     * @param data the payload to format
+     * @param resourceType the resource type identifier
+     * @return formatted output string
+     */
     protected String formatResponse(Object data, String resourceType) {
         if ("nodes".equals(resourceType)) {
             return ProxmoxTemplates.nodeList(castList(data));
@@ -51,6 +66,12 @@ public class ProxmoxTool {
         }
     }
 
+    /**
+     * Logs and throws an exception with a friendly message.
+     *
+     * @param operation the operation name
+     * @param error the encountered error
+     */
     protected void handleError(String operation, Exception error) {
         String errorMessage = error.getMessage();
         logger.error("Failed to {}: {}", operation, errorMessage, error);
@@ -70,6 +91,12 @@ public class ProxmoxTool {
         throw new RuntimeException("Failed to " + operation + ": " + errorMessage, error);
     }
 
+    /**
+     * Extracts the data section from a Proxmox API response.
+     *
+     * @param result the Proxmox API result
+     * @return the data node or a missing node
+     */
     protected JsonNode responseData(Result result) {
         JsonNode response = result.getResponse();
         if (response == null || response.isNull()) {
@@ -78,16 +105,50 @@ public class ProxmoxTool {
         return response.path("data");
     }
 
+    /**
+     * Formats a task identifier for display.
+     *
+     * @param task the task payload
+     * @return the task ID as a string
+     */
+    protected String taskId(JsonNode task) {
+        if (task == null || task.isNull()) {
+            return "null";
+        }
+        if (task.isTextual()) {
+            return task.asText();
+        }
+        return task.toString();
+    }
+
+    /**
+     * Casts an object to a list of maps.
+     *
+     * @param data the object to cast
+     * @return the list of maps
+     */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> castList(Object data) {
         return (List<Map<String, Object>>) data;
     }
 
+    /**
+     * Casts an object to a map.
+     *
+     * @param data the object to cast
+     * @return the map
+     */
     @SuppressWarnings("unchecked")
     private Map<String, Object> castMap(Object data) {
         return (Map<String, Object>) data;
     }
 
+    /**
+     * Payload wrapper for node status responses.
+     *
+     * @param node the node name
+     * @param status the node status payload
+     */
     protected record NodeStatusPayload(String node, Map<String, Object> status) {
     }
 }
