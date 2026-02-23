@@ -1,9 +1,10 @@
 name: CD
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
-    types: [closed]
+    types: [completed]
 
 permissions:
   contents: read
@@ -12,19 +13,8 @@ permissions:
   packages: read
 
 jobs:
-  ci:
-    if: github.event.pull_request.merged == true
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-      packages: read
-
   release:
-    if: github.event.pull_request.merged == true
-    needs: ci
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,12 +22,12 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
-      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ env.MERGE_SHA }}
+          ref: ${{ env.RELEASE_SHA }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
@@ -50,8 +40,7 @@ jobs:
         id: release_meta
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
         run: |
           set -euo pipefail
           CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -60,16 +49,11 @@ jobs:
             TAG="${TAG}-${GITHUB_RUN_ATTEMPT}"
           fi
           NOTES=""
-          if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
-            NOTES=$(git log --pretty=format:"- %s" "${BASE_SHA}..${HEAD_SHA}" || true)
-          fi
-          if [ -z "$NOTES" ]; then
-            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-            if [ -n "$PREV_TAG" ]; then
-              NOTES=$(git log --pretty=format:"- %s" "${PREV_TAG}..HEAD")
-            else
-              NOTES=$(git log --pretty=format:"- %s")
-            fi
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s" "${PREV_TAG}..${RELEASE_SHA}")
+          else
+            NOTES=$(git log --pretty=format:"- %s" "${RELEASE_SHA}")
           fi
           if [ -z "$NOTES" ]; then
             NOTES="- No changes"
@@ -94,7 +78,7 @@ jobs:
             OCI_DESCRIPTION=Proxmox MCP Server
             OCI_VERSION=${{ steps.release_meta.outputs.tag }}
             OCI_SOURCE=${{ github.server_url }}/${{ github.repository }}
-            OCI_REVISION=${{ env.MERGE_SHA }}
+            OCI_REVISION=${{ env.RELEASE_SHA }}
             OCI_CREATED=${{ steps.release_meta.outputs.created }}
             OCI_URL=${{ github.server_url }}/${{ github.repository }}
             OCI_AUTHORS=${{ github.actor }}
@@ -104,4 +88,4 @@ jobs:
           tag_name: ${{ steps.release_meta.outputs.tag }}
           name: Release ${{ steps.release_meta.outputs.tag }}
           body: ${{ steps.release_meta.outputs.notes }}
-          target_commitish: ${{ env.MERGE_SHA }}
+          target_commitish: ${{ env.RELEASE_SHA }}
