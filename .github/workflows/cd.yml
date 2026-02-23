@@ -5,6 +5,12 @@ on:
     branches: [main]
     types: [closed]
 
+permissions:
+  contents: read
+  security-events: write   # for CodeQL upload
+  actions: read
+  packages: read
+
 jobs:
   ci:
     if: github.event.pull_request.merged == true
