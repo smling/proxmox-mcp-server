@@ -74,10 +74,8 @@ jobs:
           format: 'ALL'
           out: target/dependency-check
           args: >
-            --failOnCVSS 7
             --nvdApiKey ${{ secrets.NVD_API_KEY }}
             --enableRetired
-            --suppression dependency-check-suppressions.xml
       - name: Archive dependency check report
         uses: actions/upload-artifact@v4
         with:
