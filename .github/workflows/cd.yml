@@ -19,6 +19,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
+      packages: read
 
   release:
     if: github.event.pull_request.merged == true
